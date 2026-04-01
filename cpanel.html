@@ -1,285 +1,238 @@
-```html id="full-neofridge-code"
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NeoFridge Control Panel</title>
-
-<style>
-body {
-  margin: 0;
-  font-family: sans-serif;
-  background: linear-gradient(135deg, #00c6ff, #0072ff);
-  color: white;
-  display: flex;
-  justify-content: center;
-  padding-top: 40px;
-}
-
-.panel {
-  background: rgba(255,255,255,0.15);
-  padding: 30px;
-  border-radius: 20px;
-  width: 90%;
-  max-width: 800px;
-}
-
-button {
-  padding: 8px 12px;
-  margin: 5px;
-  cursor: pointer;
-  border: none;
-  border-radius: 6px;
-}
-
-li {
-  display: flex;
-  justify-content: space-between;
-  background: rgba(255,255,255,0.2);
-  margin: 5px 0;
-  padding: 8px;
-  border-radius: 6px;
-  align-items: center;
-}
-
-.qty-controls button {
-  margin-left: 5px;
-}
-
-.popup {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: red;
-  padding: 15px;
-  border-radius: 10px;
-  display: none;
-}
-
-.popup a {
-  color: yellow;
-  display: block;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoFridge Smart Control Panel</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+        body { margin: 0; font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #00c6ff, #0072ff); color: #fff; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding-top: 60px; }
+        .panel { background: rgba(255,255,255,0.12); border-radius: 25px; box-shadow: 0 0 35px rgba(0,0,0,0.35); backdrop-filter: blur(20px); width: 90%; max-width: 900px; padding: 50px 40px 40px 40px; margin-bottom: 60px; }
+        h1 { font-size: 2.5em; text-align: center; margin-bottom: 10px; }
+        .subtitle { color: #dff; text-align: center; margin-bottom: 40px; }
+        .temp-control, .inventory { background: rgba(255,255,255,0.15); border-radius: 15px; padding: 25px; margin-bottom: 30px; }
+        .temp-display { font-size: 3em; font-weight: 600; margin: 0 15px; }
+        .temp-buttons button { background: #00c6ff; border: none; color: #fff; padding: 12px 20px; font-size: 1.2em; border-radius: 8px; margin: 0 5px; cursor: pointer; transition: 0.3s; }
+        .temp-buttons button:hover { background: #0099cc; }
+        .inventory input { padding: 12px; border: none; border-radius: 8px; width: 60%; margin-right: 10px; }
+        .inventory button { background: #00c6ff; border: none; color: #fff; padding: 12px 20px; border-radius: 8px; cursor: pointer; }
+        ul { list-style: none; padding: 0; margin-top: 20px; }
+        li { background: rgba(255,255,255,0.2); padding: 12px 20px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .item-controls button { background: #00c6ff; border: none; color: white; padding: 5px 12px; border-radius: 5px; cursor: pointer; margin-left: 5px; }
+        .remove-btn { background: #ff4d4d !important; }
+        .controls { text-align: center; margin-top: 30px; }
+        .controls button { margin: 5px; padding: 12px 25px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
+        #toggleVoice { background: #4CAF50; color: white; }
+        #toggleVoice.listening { background: #ff4d4d; }
+    </style>
 </head>
-
 <body>
 
 <div class="panel">
-  <h1>NeoFridge</h1>
+    <h1>NeoFridge Control Panel</h1>
+    <p class="subtitle">Manage your fridge temperature and inventory effortlessly.</p>
 
-  <h2>Temperature</h2>
-  <button id="decreaseTemp">−</button>
-  <span id="temperature">4°C</span>
-  <button id="increaseTemp">+</button>
+    <div class="temp-control">
+        <h2>Temperature</h2>
+        <div class="temp-buttons">
+            <button id="decreaseTemp">−</button>
+            <span id="temperature">4°C</span>
+            <button id="increaseTemp">+</button>
+        </div>
+    </div>
 
-  <h2>Inventory</h2>
-  <input id="itemInput" placeholder="Add item">
-  <button id="addItem">Add</button>
-  <ul id="itemList"></ul>
+    <div class="inventory">
+        <h2>Inventory</h2>
+        <div style="display: flex;">
+            <input type="text" id="itemInput" placeholder="Item name (e.g. Milk)">
+            <button id="addItem">Add Item</button>
+        </div>
+        <ul id="itemList"></ul>
+    </div>
 
-  <br>
-  <button id="startVoice">🎤 Start Voice System</button>
-  <button id="stopVoice">⛔ Stop System</button>
-  <button id="statusBtn">🔊 Status</button>
+    <div class="controls">
+        <button id="speakAll">🔊 Status Report</button>
+        <button id="toggleVoice">🎤 Start Listening</button>
+    </div>
 </div>
 
-<div id="popup" class="popup"></div>
-
 <script>
-let temperature = 4;
-let recognition;
-let listening = false;
-let initialized = false;
+    let temperature = 4;
+    let inventory = []; // Array of objects { name: string, qty: number }
 
-const tempDisplay = document.getElementById('temperature');
-const itemInput = document.getElementById('itemInput');
-const itemList = document.getElementById('itemList');
-const popup = document.getElementById('popup');
+    const tempDisplay = document.getElementById('temperature');
+    const decreaseTempBtn = document.getElementById('decreaseTemp');
+    const increaseTempBtn = document.getElementById('increaseTemp');
+    const itemInput = document.getElementById('itemInput');
+    const addItemBtn = document.getElementById('addItem');
+    const itemList = document.getElementById('itemList');
+    const speakBtn = document.getElementById('speakAll');
+    const toggleVoiceBtn = document.getElementById('toggleVoice');
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let listening = false;
+    let recognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-function updateTemp() {
-  tempDisplay.textContent = temperature + "°C";
-}
-
-function speak(text) {
-  speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-}
-
-// Popup
-function showPopup(item) {
-  popup.innerHTML = `
-    ⚠ Running low on ${item}
-    <a href="https://batviolin.github.io/neofridge/?item=${item}" target="_blank">Order it here</a>
-  `;
-  popup.style.display = "block";
-  setTimeout(() => popup.style.display = "none", 5000);
-}
-
-// Quantity check
-function checkQuantity(item, qty) {
-  if (qty < 2) {
-    speak("You are running low on " + item);
-    showPopup(item);
-  }
-}
-
-// Find item
-function findItem(item) {
-  return [...itemList.children].find(li =>
-    li.firstChild.textContent.toLowerCase().includes(item)
-  );
-}
-
-// Add item
-document.getElementById('addItem').onclick = () => {
-  let item = itemInput.value.trim();
-  if (!item) return;
-
-  let qty = 3;
-
-  let li = document.createElement("li");
-  let name = document.createElement("span");
-  name.textContent = `${item} (x${qty})`;
-
-  let controls = document.createElement("div");
-  controls.className = "qty-controls";
-
-  let minus = document.createElement("button");
-  minus.textContent = "-";
-
-  let plus = document.createElement("button");
-  plus.textContent = "+";
-
-  let remove = document.createElement("button");
-  remove.textContent = "X";
-
-  minus.onclick = () => {
-    if (qty > 0) {
-      qty--;
-      name.textContent = `${item} (x${qty})`;
-      checkQuantity(item, qty);
-    }
-  };
-
-  plus.onclick = () => {
-    qty++;
-    name.textContent = `${item} (x${qty})`;
-  };
-
-  remove.onclick = () => li.remove();
-
-  controls.append(minus, plus, remove);
-  li.append(name, controls);
-  itemList.appendChild(li);
-
-  itemInput.value = "";
-};
-
-// Temperature controls
-increaseTemp.onclick = () => {
-  temperature++;
-  updateTemp();
-};
-
-decreaseTemp.onclick = () => {
-  temperature--;
-  updateTemp();
-};
-
-// Status
-statusBtn.onclick = () => {
-  let items = [...itemList.children].map(li => li.firstChild.textContent);
-  speak("Temperature is " + temperature + ". Items: " + (items.join(", ") || "none"));
-};
-
-// Voice system
-if (SpeechRecognition) {
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-
-  recognition.onresult = (e) => {
-    let cmd = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
-    console.log("Heard:", cmd);
-
-    // Wake command
-    if (cmd.includes("start listening")) {
-      listening = true;
-      speak("Listening activated");
-      return;
+    function updateTempDisplay() {
+        tempDisplay.textContent = temperature + "°C";
     }
 
-    // Ignore if not active
-    if (!listening) return;
-
-    // Temperature
-    if (cmd === "increase") increaseTemp.click();
-    else if (cmd === "decrease") decreaseTemp.click();
-
-    // Add
-    else if (cmd.startsWith("add ")) {
-      itemInput.value = cmd.replace("add ", "");
-      addItem.click();
+    function speak(text) {
+        const speech = new SpeechSynthesisUtterance(text);
+        window.speechSynthesis.speak(speech);
     }
 
-    // Increase item
-    else if (cmd.startsWith("increase ")) {
-      let li = findItem(cmd.replace("increase ", ""));
-      if (li) li.querySelectorAll("button")[1].click();
+    function triggerLowStockAlert(itemName) {
+        const url = `batviolin.github.io/neofridge/?item=${encodeURIComponent(itemName)}`;
+        alert(`You are running low on ${itemName}!\nRestock here: ${url}`);
     }
 
-    // Decrease item
-    else if (cmd.startsWith("decrease ")) {
-      let li = findItem(cmd.replace("decrease ", ""));
-      if (li) li.querySelectorAll("button")[0].click();
+    function renderInventory() {
+        itemList.innerHTML = "";
+        inventory.forEach((item, index) => {
+            const li = document.createElement("li");
+            li.innerHTML = `
+                <span><strong>${item.name}</strong> — Quantity: ${item.qty}</span>
+                <div class="item-controls">
+                    <button onclick="changeQty(${index}, 1)">+</button>
+                    <button onclick="changeQty(${index}, -1)">-</button>
+                    <button class="remove-btn" onclick="deleteItem(${index})">Remove</button>
+                </div>
+            `;
+            itemList.appendChild(li);
+        });
     }
 
-    // Remove item
-    else if (cmd.startsWith("remove ")) {
-      let li = findItem(cmd.replace("remove ", ""));
-      if (li) li.remove();
+    // --- Core Logic Functions ---
+
+    function addItem(name) {
+        let existing = inventory.find(i => i.name.toLowerCase() === name.toLowerCase());
+        if (existing) {
+            existing.qty++;
+        } else {
+            inventory.push({ name: name, qty: 1 });
+            // Alert if initial add is 1
+            triggerLowStockAlert(name);
+        }
+        renderInventory();
     }
 
-    // Status
-    else if (cmd.includes("status")) {
-      statusBtn.click();
+    function changeQty(index, delta) {
+        inventory[index].qty += delta;
+        if (inventory[index].qty < 2 && inventory[index].qty > 0 && delta < 0) {
+            triggerLowStockAlert(inventory[index].name);
+        }
+        if (inventory[index].qty <= 0) {
+            deleteItem(index);
+        } else {
+            renderInventory();
+        }
     }
 
-    // Stop listening
-    else if (cmd.includes("stop listening")) {
-      listening = false;
-      speak("Listening stopped");
+    function deleteItem(index) {
+        inventory.splice(index, 1);
+        renderInventory();
     }
-  };
 
-  // Prevent stopping
-  recognition.onend = () => {
-    if (initialized) {
-      setTimeout(() => recognition.start(), 500);
+    // --- UI Event Listeners ---
+
+    increaseTempBtn.onclick = () => {
+        if (temperature < 10) {
+            temperature++;
+            updateTempDisplay();
+            speak("Temperature increased");
+        }
+    };
+
+    decreaseTempBtn.onclick = () => {
+        if (temperature > -5) {
+            temperature--;
+            updateTempDisplay();
+            speak("Temperature decreased");
+        }
+    };
+
+    addItemBtn.onclick = () => {
+        const name = itemInput.value.trim();
+        if (name) {
+            addItem(name);
+            itemInput.value = "";
+        }
+    };
+
+    speakBtn.onclick = () => {
+        let itemsStr = inventory.map(i => `${i.qty} ${i.name}`).join(", ");
+        speak(`Fridge temperature is ${temperature} degrees. Inventory contains: ${itemsStr || "nothing"}`);
+    };
+
+    // --- Voice Recognition Logic ---
+
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+            console.log("Recognized:", transcript);
+
+            // Temperature Controls
+            if (transcript.includes("increase temperature")) {
+                increaseTempBtn.click();
+            } else if (transcript.includes("decrease temperature")) {
+                decreaseTempBtn.click();
+            } 
+            
+            // Remove Command (Full Deletion)
+            else if (transcript.startsWith("remove ")) {
+                const name = transcript.replace("remove ", "").trim();
+                const idx = inventory.findIndex(i => i.name.toLowerCase() === name);
+                if (idx !== -1) deleteItem(idx);
+            }
+
+            // Increase Command (Quantity Change)
+            else if (transcript.startsWith("increase ")) {
+                const name = transcript.replace("increase ", "").trim();
+                const idx = inventory.findIndex(i => i.name.toLowerCase() === name);
+                if (idx !== -1) changeQty(idx, 1);
+            }
+
+            // Decrease Command (Quantity Change)
+            else if (transcript.startsWith("decrease ")) {
+                const name = transcript.replace("decrease ", "").trim();
+                const idx = inventory.findIndex(i => i.name.toLowerCase() === name);
+                if (idx !== -1) changeQty(idx, -1);
+            }
+
+            // Add Command (New Item or +1)
+            else if (transcript.startsWith("add ")) {
+                const name = transcript.replace("add ", "").trim();
+                addItem(name);
+            }
+
+            // Status Command
+            else if (transcript.includes("status")) {
+                speakBtn.click();
+            }
+        };
     }
-  };
-}
 
-// Start system (required once)
-startVoice.onclick = () => {
-  if (!initialized) {
-    recognition.start();
-    initialized = true;
-    speak("Voice system ready. Say start listening");
-  }
-};
-
-// Stop system completely
-stopVoice.onclick = () => {
-  if (recognition) recognition.stop();
-  initialized = false;
-  listening = false;
-  speak("Voice system off");
-};
+    toggleVoiceBtn.onclick = () => {
+        if (!SpeechRecognition) return alert("Speech recognition not supported in this browser.");
+        
+        if (!listening) {
+            recognition.start();
+            listening = true;
+            toggleVoiceBtn.textContent = "Stop Listening";
+            toggleVoiceBtn.classList.add("listening");
+        } else {
+            recognition.stop();
+            listening = false;
+            toggleVoiceBtn.textContent = "Start Listening";
+            toggleVoiceBtn.classList.remove("listening");
+        }
+    };
 </script>
 
 </body>
 </html>
-```
