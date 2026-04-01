@@ -1,85 +1,57 @@
-```html
+```html id="full-neofridge-code"
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NeoFridge Smart Control Panel</title>
+<title>NeoFridge Control Panel</title>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
-
 body {
   margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: sans-serif;
   background: linear-gradient(135deg, #00c6ff, #0072ff);
-  color: #fff;
-  min-height: 100vh;
+  color: white;
   display: flex;
   justify-content: center;
-  padding-top: 60px;
+  padding-top: 40px;
 }
 
 .panel {
-  background: rgba(255,255,255,0.12);
-  border-radius: 25px;
-  box-shadow: 0 0 35px rgba(0,0,0,0.35);
-  backdrop-filter: blur(20px);
-  width: 90%;
-  max-width: 900px;
-  padding: 40px;
-}
-
-h1 { text-align: center; }
-
-.subtitle {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.temp-control, .inventory {
   background: rgba(255,255,255,0.15);
-  border-radius: 15px;
-  padding: 20px;
-  margin-bottom: 25px;
+  padding: 30px;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 800px;
 }
 
 button {
-  background: #00c6ff;
-  border: none;
-  color: #fff;
-  padding: 10px 15px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 5px;
   cursor: pointer;
+  border: none;
+  border-radius: 6px;
 }
-
-.inventory input {
-  padding: 10px;
-  border-radius: 8px;
-  width: 60%;
-}
-
-ul { list-style: none; padding: 0; }
 
 li {
-  background: rgba(255,255,255,0.2);
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 10px;
   display: flex;
   justify-content: space-between;
+  background: rgba(255,255,255,0.2);
+  margin: 5px 0;
+  padding: 8px;
+  border-radius: 6px;
+  align-items: center;
 }
 
 .qty-controls button {
-  margin: 0 3px;
+  margin-left: 5px;
 }
 
-/* Popup */
 .popup {
   position: fixed;
   top: 20px;
   right: 20px;
-  background: #ff4d4d;
+  background: red;
   padding: 15px;
   border-radius: 10px;
   display: none;
@@ -95,22 +67,22 @@ li {
 <body>
 
 <div class="panel">
-  <h1>NeoFridge Control Panel</h1>
-  <p class="subtitle">Smart fridge management</p>
+  <h1>NeoFridge</h1>
 
-  <div class="temp-control">
-    <h2>Temperature</h2>
-    <button id="decreaseTemp">−</button>
-    <span id="temperature">4°C</span>
-    <button id="increaseTemp">+</button>
-  </div>
+  <h2>Temperature</h2>
+  <button id="decreaseTemp">−</button>
+  <span id="temperature">4°C</span>
+  <button id="increaseTemp">+</button>
 
-  <div class="inventory">
-    <h2>Inventory</h2>
-    <input type="text" id="itemInput" placeholder="Add item">
-    <button id="addItem">Add</button>
-    <ul id="itemList"></ul>
-  </div>
+  <h2>Inventory</h2>
+  <input id="itemInput" placeholder="Add item">
+  <button id="addItem">Add</button>
+  <ul id="itemList"></ul>
+
+  <br>
+  <button id="startVoice">🎤 Start Voice System</button>
+  <button id="stopVoice">⛔ Stop System</button>
+  <button id="statusBtn">🔊 Status</button>
 </div>
 
 <div id="popup" class="popup"></div>
@@ -118,7 +90,8 @@ li {
 <script>
 let temperature = 4;
 let recognition;
-let listening = true;
+let listening = false;
+let initialized = false;
 
 const tempDisplay = document.getElementById('temperature');
 const itemInput = document.getElementById('itemInput');
@@ -132,8 +105,7 @@ function updateTemp() {
 }
 
 function speak(text) {
-  const speech = new SpeechSynthesisUtterance(text);
-  speechSynthesis.speak(speech);
+  speechSynthesis.speak(new SpeechSynthesisUtterance(text));
 }
 
 // Popup
@@ -143,7 +115,6 @@ function showPopup(item) {
     <a href="https://batviolin.github.io/neofridge/?item=${item}" target="_blank">Order it here</a>
   `;
   popup.style.display = "block";
-
   setTimeout(() => popup.style.display = "none", 5000);
 }
 
@@ -155,16 +126,23 @@ function checkQuantity(item, qty) {
   }
 }
 
+// Find item
+function findItem(item) {
+  return [...itemList.children].find(li =>
+    li.firstChild.textContent.toLowerCase().includes(item)
+  );
+}
+
 // Add item
 document.getElementById('addItem').onclick = () => {
   let item = itemInput.value.trim();
   if (!item) return;
 
-  let quantity = 3;
+  let qty = 3;
 
   let li = document.createElement("li");
   let name = document.createElement("span");
-  name.textContent = `${item} (x${quantity})`;
+  name.textContent = `${item} (x${qty})`;
 
   let controls = document.createElement("div");
   controls.className = "qty-controls";
@@ -179,16 +157,16 @@ document.getElementById('addItem').onclick = () => {
   remove.textContent = "X";
 
   minus.onclick = () => {
-    if (quantity > 0) {
-      quantity--;
-      name.textContent = `${item} (x${quantity})`;
-      checkQuantity(item, quantity);
+    if (qty > 0) {
+      qty--;
+      name.textContent = `${item} (x${qty})`;
+      checkQuantity(item, qty);
     }
   };
 
   plus.onclick = () => {
-    quantity++;
-    name.textContent = `${item} (x${quantity})`;
+    qty++;
+    name.textContent = `${item} (x${qty})`;
   };
 
   remove.onclick = () => li.remove();
@@ -200,66 +178,106 @@ document.getElementById('addItem').onclick = () => {
   itemInput.value = "";
 };
 
-// Temperature
-document.getElementById('increaseTemp').onclick = () => {
-  if (temperature < 10) {
-    temperature++;
-    updateTemp();
-    speak("Temperature increased");
-  }
+// Temperature controls
+increaseTemp.onclick = () => {
+  temperature++;
+  updateTemp();
 };
 
-document.getElementById('decreaseTemp').onclick = () => {
-  if (temperature > -5) {
-    temperature--;
-    updateTemp();
-    speak("Temperature decreased");
-  }
+decreaseTemp.onclick = () => {
+  temperature--;
+  updateTemp();
 };
 
-// Voice Recognition FIXED
+// Status
+statusBtn.onclick = () => {
+  let items = [...itemList.children].map(li => li.firstChild.textContent);
+  speak("Temperature is " + temperature + ". Items: " + (items.join(", ") || "none"));
+};
+
+// Voice system
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.continuous = true;
-  recognition.interimResults = false;
 
   recognition.onresult = (e) => {
     let cmd = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
-
     console.log("Heard:", cmd);
 
-    if (cmd.includes("increase")) {
-      document.getElementById('increaseTemp').click();
+    // Wake command
+    if (cmd.includes("start listening")) {
+      listening = true;
+      speak("Listening activated");
+      return;
     }
-    else if (cmd.includes("decrease")) {
-      document.getElementById('decreaseTemp').click();
+
+    // Ignore if not active
+    if (!listening) return;
+
+    // Temperature
+    if (cmd === "increase") increaseTemp.click();
+    else if (cmd === "decrease") decreaseTemp.click();
+
+    // Add
+    else if (cmd.startsWith("add ")) {
+      itemInput.value = cmd.replace("add ", "");
+      addItem.click();
     }
-    else if (cmd.includes("add")) {
-      let item = cmd.replace("add", "").trim();
-      itemInput.value = item;
-      document.getElementById('addItem').click();
+
+    // Increase item
+    else if (cmd.startsWith("increase ")) {
+      let li = findItem(cmd.replace("increase ", ""));
+      if (li) li.querySelectorAll("button")[1].click();
     }
+
+    // Decrease item
+    else if (cmd.startsWith("decrease ")) {
+      let li = findItem(cmd.replace("decrease ", ""));
+      if (li) li.querySelectorAll("button")[0].click();
+    }
+
+    // Remove item
+    else if (cmd.startsWith("remove ")) {
+      let li = findItem(cmd.replace("remove ", ""));
+      if (li) li.remove();
+    }
+
+    // Status
+    else if (cmd.includes("status")) {
+      statusBtn.click();
+    }
+
+    // Stop listening
     else if (cmd.includes("stop listening")) {
       listening = false;
-      recognition.stop();
-      speak("Voice control stopped");
+      speak("Listening stopped");
     }
   };
 
-  // 🔁 AUTO RESTART FIX
+  // Prevent stopping
   recognition.onend = () => {
-    if (listening) {
-      recognition.start();
+    if (initialized) {
+      setTimeout(() => recognition.start(), 500);
     }
   };
-
-  recognition.onerror = (e) => {
-    console.log("Error:", e.error);
-  };
-
-  // Start immediately
-  recognition.start();
 }
+
+// Start system (required once)
+startVoice.onclick = () => {
+  if (!initialized) {
+    recognition.start();
+    initialized = true;
+    speak("Voice system ready. Say start listening");
+  }
+};
+
+// Stop system completely
+stopVoice.onclick = () => {
+  if (recognition) recognition.stop();
+  initialized = false;
+  listening = false;
+  speak("Voice system off");
+};
 </script>
 
 </body>
