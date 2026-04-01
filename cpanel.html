@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,7 +17,6 @@ body {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
   padding-top: 60px;
 }
 
@@ -27,70 +27,51 @@ body {
   backdrop-filter: blur(20px);
   width: 90%;
   max-width: 900px;
-  padding: 50px 40px 40px 40px;
-  margin-bottom: 60px;
+  padding: 40px;
 }
 
 h1 { text-align: center; }
 
 .subtitle {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
 .temp-control, .inventory {
   background: rgba(255,255,255,0.15);
   border-radius: 15px;
-  padding: 25px;
-  margin-bottom: 30px;
+  padding: 20px;
+  margin-bottom: 25px;
 }
 
-.temp-buttons button {
+button {
   background: #00c6ff;
   border: none;
   color: #fff;
-  padding: 12px 20px;
-  font-size: 1.2em;
+  padding: 10px 15px;
   border-radius: 8px;
-  margin: 0 5px;
   cursor: pointer;
 }
 
 .inventory input {
-  padding: 12px;
+  padding: 10px;
   border-radius: 8px;
-  width: 65%;
+  width: 60%;
 }
 
-.inventory button {
-  background: #00c6ff;
-  border: none;
-  color: #fff;
-  padding: 12px 20px;
-  border-radius: 8px;
-}
-
-ul {
-  list-style: none;
-  padding: 0;
-}
+ul { list-style: none; padding: 0; }
 
 li {
   background: rgba(255,255,255,0.2);
-  padding: 12px;
+  padding: 10px;
   border-radius: 8px;
   margin-bottom: 10px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
 }
 
 .qty-controls button {
   margin: 0 3px;
-  padding: 5px 8px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
 }
 
 /* Popup */
@@ -99,17 +80,14 @@ li {
   top: 20px;
   right: 20px;
   background: #ff4d4d;
-  padding: 20px;
+  padding: 15px;
   border-radius: 10px;
   display: none;
-  color: #fff;
-  box-shadow: 0 0 20px rgba(0,0,0,0.3);
 }
 
 .popup a {
   color: yellow;
   display: block;
-  margin-top: 10px;
 }
 </style>
 </head>
@@ -118,7 +96,7 @@ li {
 
 <div class="panel">
   <h1>NeoFridge Control Panel</h1>
-  <p class="subtitle">Manage your fridge smartly</p>
+  <p class="subtitle">Smart fridge management</p>
 
   <div class="temp-control">
     <h2>Temperature</h2>
@@ -158,20 +136,18 @@ function speak(text) {
   speechSynthesis.speak(speech);
 }
 
-// Popup function
+// Popup
 function showPopup(item) {
   popup.innerHTML = `
-    You are running low on ${item}
+    ⚠ Running low on ${item}
     <a href="https://batviolin.github.io/neofridge/?item=${item}" target="_blank">Order it here</a>
   `;
   popup.style.display = "block";
 
-  setTimeout(() => {
-    popup.style.display = "none";
-  }, 5000);
+  setTimeout(() => popup.style.display = "none", 5000);
 }
 
-// Check quantity
+// Quantity check
 function checkQuantity(item, qty) {
   if (qty < 2) {
     speak("You are running low on " + item);
@@ -187,45 +163,44 @@ document.getElementById('addItem').onclick = () => {
   let quantity = 3;
 
   let li = document.createElement("li");
+  let name = document.createElement("span");
+  name.textContent = `${item} (x${quantity})`;
 
-  const nameSpan = document.createElement("span");
-  nameSpan.textContent = `${item} (x${quantity})`;
-
-  const controls = document.createElement("div");
+  let controls = document.createElement("div");
   controls.className = "qty-controls";
 
-  const minus = document.createElement("button");
+  let minus = document.createElement("button");
   minus.textContent = "-";
 
-  const plus = document.createElement("button");
+  let plus = document.createElement("button");
   plus.textContent = "+";
 
-  const remove = document.createElement("button");
+  let remove = document.createElement("button");
   remove.textContent = "X";
 
   minus.onclick = () => {
     if (quantity > 0) {
       quantity--;
-      nameSpan.textContent = `${item} (x${quantity})`;
+      name.textContent = `${item} (x${quantity})`;
       checkQuantity(item, quantity);
     }
   };
 
   plus.onclick = () => {
     quantity++;
-    nameSpan.textContent = `${item} (x${quantity})`;
+    name.textContent = `${item} (x${quantity})`;
   };
 
   remove.onclick = () => li.remove();
 
   controls.append(minus, plus, remove);
-  li.append(nameSpan, controls);
+  li.append(name, controls);
   itemList.appendChild(li);
 
   itemInput.value = "";
 };
 
-// Temp controls
+// Temperature
 document.getElementById('increaseTemp').onclick = () => {
   if (temperature < 10) {
     temperature++;
@@ -242,13 +217,16 @@ document.getElementById('decreaseTemp').onclick = () => {
   }
 };
 
-// Voice recognition
+// Voice Recognition FIXED
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.continuous = true;
+  recognition.interimResults = false;
 
   recognition.onresult = (e) => {
-    let cmd = e.results[e.results.length - 1][0].transcript.toLowerCase();
+    let cmd = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
+
+    console.log("Heard:", cmd);
 
     if (cmd.includes("increase")) {
       document.getElementById('increaseTemp').click();
@@ -262,16 +240,28 @@ if (SpeechRecognition) {
       document.getElementById('addItem').click();
     }
     else if (cmd.includes("stop listening")) {
-      recognition.stop();
       listening = false;
+      recognition.stop();
       speak("Voice control stopped");
     }
   };
 
-  // Auto start listening
+  // 🔁 AUTO RESTART FIX
+  recognition.onend = () => {
+    if (listening) {
+      recognition.start();
+    }
+  };
+
+  recognition.onerror = (e) => {
+    console.log("Error:", e.error);
+  };
+
+  // Start immediately
   recognition.start();
 }
 </script>
 
 </body>
 </html>
+```
